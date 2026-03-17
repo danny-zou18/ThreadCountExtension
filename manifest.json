@@ -1,0 +1,9 @@
+{
+  "manifest_version": 3,
+  "name": "My First TS Extension",
+  "version": "1.0",
+  "description": "A basic Chrome extension using TypeScript.",
+  "action": {
+    "default_popup": "popup.html"
+  }
+}

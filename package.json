@@ -1,0 +1,25 @@
+{
+  "name": "threadcountextension",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/danny-zou18/ThreadCountExtension.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/danny-zou18/ThreadCountExtension/issues"
+  },
+  "homepage": "https://github.com/danny-zou18/ThreadCountExtension#readme",
+  "devDependencies": {
+    "chrome-types": "^0.1.423",
+    "typescript": "^5.9.3"
+  }
+}

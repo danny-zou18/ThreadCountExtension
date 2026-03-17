@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ES2020",
+    "moduleResolution": "node",
+    "strict": true,
+    "rootDir": "src",
+    "outDir": "dist",
+    "lib": ["ES2020", "DOM"],
+    "types": ["chrome-types"]
+  },
+  "include": ["src"]
+}
