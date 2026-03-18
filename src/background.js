@@ -55,21 +55,30 @@ function ensureContextMenu() {
   log("ensureContextMenu:start");
   chrome.contextMenus.removeAll(() => {
     if (chrome.runtime.lastError) {
-      log("ensureContextMenu:removeAll-error", chrome.runtime.lastError.message);
+      log(
+        "ensureContextMenu:removeAll-error",
+        chrome.runtime.lastError.message,
+      );
     }
 
-    chrome.contextMenus.create({
-      id: MENU_ID,
-      title: "Save to Wardrobe",
-      contexts: ["image", "page"],
-    }, () => {
-      if (chrome.runtime.lastError) {
-        log("ensureContextMenu:create-error", chrome.runtime.lastError.message);
-        return;
-      }
+    chrome.contextMenus.create(
+      {
+        id: MENU_ID,
+        title: "Save to Wardrobe",
+        contexts: ["image", "page"],
+      },
+      () => {
+        if (chrome.runtime.lastError) {
+          log(
+            "ensureContextMenu:create-error",
+            chrome.runtime.lastError.message,
+          );
+          return;
+        }
 
-      log("ensureContextMenu:created");
-    });
+        log("ensureContextMenu:created");
+      },
+    );
   });
 }
 
@@ -97,7 +106,10 @@ async function handleSaveImage(info, tab) {
     });
 
     const message = `Saved ${result.item.name} to your wardrobe.`;
-    log("handleSaveImage:success", { itemId: result.item.id, name: result.item.name });
+    log("handleSaveImage:success", {
+      itemId: result.item.id,
+      name: result.item.name,
+    });
     await writeLastSaveResult("success", message);
     await flashBadge("OK", "#2d7a3a");
     createNotification("Saved to Wardrobe", message);
