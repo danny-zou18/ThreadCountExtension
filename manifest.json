@@ -3,12 +3,16 @@
   "name": "ThreadCount Auth",
   "version": "2.0.0",
   "description": "Sign in to ThreadCount with Supabase directly from the extension popup.",
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
     "default_popup": "popup.html"
   },
-  "permissions": ["storage"],
+  "permissions": ["storage", "contextMenus", "notifications"],
   "host_permissions": [
     "https://lfyujnnwpfotoelcxdzd.supabase.co/*",
-    "https://*.supabase.co/*"
+    "https://*.supabase.co/*",
+    "<all_urls>"
   ]
 }

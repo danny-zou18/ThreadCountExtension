@@ -1,15 +1,22 @@
 import { createSupabaseBrowserClient } from "./supabase.js";
+import {
+  CATEGORY_LABELS,
+  LAST_SAVE_KEY,
+  fetchWardrobeItems,
+  formatCount,
+  getItemImageUrl,
+} from "./wardrobe.js";
 
 const supabase = createSupabaseBrowserClient();
 
-const CATEGORY_LABELS = {
-  tops: "Tops",
-  bottoms: "Bottoms",
-  dresses: "Dresses",
-  shoes: "Shoes",
-  accessories: "Accessories",
-  outerwear: "Outerwear",
-};
+function log(step, details) {
+  if (details === undefined) {
+    console.log(`[ThreadCount popup] ${step}`);
+    return;
+  }
+
+  console.log(`[ThreadCount popup] ${step}`, details);
+}
 
 const elements = {
   authForm: document.getElementById("authForm"),
@@ -25,6 +32,7 @@ const elements = {
   wardrobeCount: document.getElementById("wardrobeCount"),
   wardrobeEmpty: document.getElementById("wardrobeEmpty"),
   wardrobeList: document.getElementById("wardrobeList"),
+  saveFeedback: document.getElementById("saveFeedback"),
   status: document.getElementById("status"),
 };
 
@@ -32,12 +40,16 @@ const state = {
   busy: false,
 };
 
+let renderSessionScheduled = false;
+
 function setStatus(message, tone = "neutral") {
+  log("setStatus", { message, tone });
   elements.status.textContent = message;
   elements.status.className = `status${tone === "neutral" ? "" : ` ${tone}`}`;
 }
 
 function setBusy(isBusy) {
+  log("setBusy", { isBusy });
   state.busy = isBusy;
 
   for (const button of [
@@ -52,17 +64,16 @@ function setBusy(isBusy) {
   }
 }
 
-function formatCount(count) {
-  return `${count} item${count === 1 ? "" : "s"}`;
-}
-
-function getItemImageUrl(imagePath) {
-  if (!imagePath) {
-    return null;
+function renderSaveFeedback(entry) {
+  if (!entry) {
+    elements.saveFeedback.textContent =
+      "Right-click any image in your browser and choose Save to Wardrobe.";
+    elements.saveFeedback.className = "feedback";
+    return;
   }
 
-  const { data } = supabase.storage.from("wardrobe").getPublicUrl(imagePath);
-  return data.publicUrl;
+  elements.saveFeedback.textContent = entry.message;
+  elements.saveFeedback.className = `feedback${entry.status ? ` ${entry.status}` : ""}`;
 }
 
 function renderWardrobeItems(items) {
@@ -83,7 +94,7 @@ function renderWardrobeItems(items) {
     const article = document.createElement("article");
     article.className = "wardrobe-item";
 
-    const imageUrl = getItemImageUrl(item.image_path);
+    const imageUrl = getItemImageUrl(supabase, item.image_path);
     const thumb = document.createElement("div");
     thumb.className = "wardrobe-thumb";
 
@@ -142,23 +153,9 @@ function resetWardrobe(message = "Sign in to load your wardrobe.") {
   elements.wardrobeCard.classList.add("hidden");
 }
 
-async function fetchWardrobeItems(userId) {
-  const { data, error } = await supabase
-    .from("wardrobe_items")
-    .select(
-      "id, user_id, name, category, image_path, labels, colors, seasons, is_inspiration, is_template, created_at, updated_at",
-    )
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    throw error;
-  }
-
-  return data || [];
-}
-
 async function loadWardrobe(userId) {
+  log("loadWardrobe:start", { userId });
+
   if (!userId) {
     throw new Error("No user id found for this session.");
   }
@@ -168,17 +165,35 @@ async function loadWardrobe(userId) {
   elements.wardrobeEmpty.classList.remove("hidden");
   elements.wardrobeCount.textContent = "…";
 
-  const items = await fetchWardrobeItems(userId);
+  const items = await fetchWardrobeItems(supabase, userId);
+  log("loadWardrobe:success", { count: items.length });
   renderWardrobeItems(items);
 }
 
+async function loadSaveFeedback() {
+  log("loadSaveFeedback:start");
+  const storage = globalThis.chrome?.storage?.local;
+
+  if (!storage) {
+    log("loadSaveFeedback:no-storage");
+    renderSaveFeedback();
+    return;
+  }
+
+  const result = await storage.get([LAST_SAVE_KEY]);
+  log("loadSaveFeedback:result", result[LAST_SAVE_KEY] || null);
+  renderSaveFeedback(result[LAST_SAVE_KEY]);
+}
+
 async function renderSession() {
+  log("renderSession:start");
   const {
     data: { session },
     error,
   } = await supabase.auth.getSession();
 
   if (error) {
+    log("renderSession:getSession-error", error);
     setStatus(error.message, "error");
     return;
   }
@@ -187,22 +202,37 @@ async function renderSession() {
   const userId = session?.user?.id;
   const isSignedIn = Boolean(email);
 
+  log("renderSession:session", {
+    isSignedIn,
+    email: email || null,
+    userId: userId || null,
+  });
+
   elements.sessionCard.classList.toggle("hidden", !isSignedIn);
   elements.authForm.closest(".card").classList.toggle("hidden", isSignedIn);
 
   if (isSignedIn) {
     elements.sessionEmail.textContent = email;
+    elements.sessionCard.classList.remove("hidden");
+
     try {
       await loadWardrobe(userId);
+      log("renderSession:wardrobe-loaded");
       setStatus("Session ready. Your wardrobe is loaded.", "success");
     } catch (wardrobeError) {
-      resetWardrobe("We could not load your wardrobe right now.");
+      log("renderSession:wardrobe-error", wardrobeError);
       elements.wardrobeCard.classList.remove("hidden");
-      setStatus(
-        wardrobeError.message || "Unable to load wardrobe items.",
-        "error",
-      );
-      return;
+      elements.wardrobeList.replaceChildren();
+      elements.wardrobeCount.textContent = formatCount(0);
+      elements.wardrobeEmpty.textContent =
+        "Signed in, but we could not load your wardrobe right now.";
+      elements.wardrobeEmpty.classList.remove("hidden");
+      setStatus("Signed in successfully.", "success");
+      renderSaveFeedback({
+        status: "error",
+        message:
+          wardrobeError.message || "Unable to load wardrobe items right now.",
+      });
     }
 
     return;
@@ -215,23 +245,53 @@ async function renderSession() {
   );
 }
 
+function scheduleRenderSession(reason) {
+  log("scheduleRenderSession", {
+    reason,
+    alreadyScheduled: renderSessionScheduled,
+  });
+
+  if (renderSessionScheduled) {
+    return;
+  }
+
+  renderSessionScheduled = true;
+
+  globalThis.setTimeout(async () => {
+    renderSessionScheduled = false;
+
+    try {
+      await renderSession();
+    } catch (error) {
+      log("scheduleRenderSession:error", error);
+      setStatus(error.message || "Unable to refresh session.", "error");
+    }
+  }, 0);
+}
+
 async function signIn(email, password) {
+  log("signIn:start", { email });
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
+    log("signIn:error", error);
     throw error;
   }
 
+  log("signIn:success", { email });
   setStatus("Signed in successfully.", "success");
 }
 
 async function resetPassword(email) {
+  log("resetPassword:start", { email });
   const { error } = await supabase.auth.resetPasswordForEmail(email);
 
   if (error) {
+    log("resetPassword:error", error);
     throw error;
   }
 
+  log("resetPassword:success", { email });
   setStatus("Password reset email sent. Check your inbox.", "success");
 }
 
@@ -247,11 +307,25 @@ elements.authForm.addEventListener("submit", async (event) => {
   }
 
   try {
+    log("authForm:submit", { email });
     setBusy(true);
     setStatus("Signing in…");
-    await signIn(email, password);
+
+    const signInWatchdog = setTimeout(() => {
+      log("signIn:watchdog-timeout", { email });
+    }, 8000);
+
+    try {
+      await signIn(email, password);
+    } finally {
+      clearTimeout(signInWatchdog);
+    }
+
+    log("authForm:signIn-finished", { email });
     await renderSession();
+    log("authForm:renderSession-finished", { email });
   } catch (error) {
+    log("authForm:error", error);
     setStatus(error.message || "Authentication failed.", "error");
   } finally {
     setBusy(false);
@@ -282,18 +356,22 @@ elements.resetBtn.addEventListener("click", async () => {
 
 elements.logoutBtn.addEventListener("click", async () => {
   try {
+    log("logout:start");
     setBusy(true);
     setStatus("Signing out…");
 
     const { error } = await supabase.auth.signOut();
 
     if (error) {
+      log("logout:error", error);
       throw error;
     }
 
+    log("logout:success");
     elements.password.value = "";
     await renderSession();
   } catch (error) {
+    log("logout:catch", error);
     setStatus(error.message || "Unable to sign out.", "error");
   } finally {
     setBusy(false);
@@ -302,31 +380,68 @@ elements.logoutBtn.addEventListener("click", async () => {
 
 elements.refreshBtn.addEventListener("click", async () => {
   try {
+    log("refresh:start");
     setBusy(true);
     setStatus("Refreshing session…");
 
     const { error } = await supabase.auth.refreshSession();
 
     if (error) {
+      log("refresh:error", error);
       throw error;
     }
 
+    log("refresh:success");
     await renderSession();
   } catch (error) {
+    log("refresh:catch", error);
     setStatus(error.message || "Unable to refresh session.", "error");
   } finally {
     setBusy(false);
   }
 });
 
-supabase.auth.onAuthStateChange(async (event) => {
+supabase.auth.onAuthStateChange((event) => {
+  log("authStateChange", { event });
   if (
     event === "SIGNED_IN" ||
     event === "SIGNED_OUT" ||
     event === "TOKEN_REFRESHED"
   ) {
-    await renderSession();
+    scheduleRenderSession(`auth:${event}`);
   }
 });
 
-renderSession();
+globalThis.chrome?.storage?.onChanged?.addListener(
+  async (changes, areaName) => {
+    log("storage:onChanged", {
+      areaName,
+      hasLastSave: Boolean(changes[LAST_SAVE_KEY]),
+    });
+    if (areaName !== "local" || !changes[LAST_SAVE_KEY]) {
+      return;
+    }
+
+    renderSaveFeedback(changes[LAST_SAVE_KEY].newValue);
+
+    if (changes[LAST_SAVE_KEY].newValue?.status === "success") {
+      scheduleRenderSession("storage:last-save-success");
+    }
+  },
+);
+
+globalThis.addEventListener("error", (event) => {
+  log("window:error", {
+    message: event.message,
+    filename: event.filename,
+    lineno: event.lineno,
+    colno: event.colno,
+  });
+});
+
+globalThis.addEventListener("unhandledrejection", (event) => {
+  log("window:unhandledrejection", event.reason);
+});
+
+loadSaveFeedback();
+scheduleRenderSession("startup");

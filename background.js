@@ -3302,17 +3302,17 @@ Suggested solution: ${env.workaround}`;
      * @internal
      */
     static syncState(currentState, newState, onJoin, onLeave) {
-      const state2 = this.cloneDeep(currentState);
+      const state = this.cloneDeep(currentState);
       const transformedState = this.transformState(newState);
       const joins = {};
       const leaves = {};
-      this.map(state2, (key, presences) => {
+      this.map(state, (key, presences) => {
         if (!transformedState[key]) {
           leaves[key] = presences;
         }
       });
       this.map(transformedState, (key, newPresences) => {
-        const currentPresences = state2[key];
+        const currentPresences = state[key];
         if (currentPresences) {
           const newPresenceRefs = newPresences.map((m) => m.presence_ref);
           const curPresenceRefs = currentPresences.map((m) => m.presence_ref);
@@ -3328,7 +3328,7 @@ Suggested solution: ${env.workaround}`;
           joins[key] = newPresences;
         }
       });
-      return this.syncDiff(state2, { joins, leaves }, onJoin, onLeave);
+      return this.syncDiff(state, { joins, leaves }, onJoin, onLeave);
     }
     /**
      * Used to sync a diff of presence join and leave events from the
@@ -3340,7 +3340,7 @@ Suggested solution: ${env.workaround}`;
      *
      * @internal
      */
-    static syncDiff(state2, diff, onJoin, onLeave) {
+    static syncDiff(state, diff, onJoin, onLeave) {
       const { joins, leaves } = {
         joins: this.transformState(diff.joins),
         leaves: this.transformState(diff.leaves)
@@ -3355,27 +3355,27 @@ Suggested solution: ${env.workaround}`;
       }
       this.map(joins, (key, newPresences) => {
         var _a;
-        const currentPresences = (_a = state2[key]) !== null && _a !== void 0 ? _a : [];
-        state2[key] = this.cloneDeep(newPresences);
+        const currentPresences = (_a = state[key]) !== null && _a !== void 0 ? _a : [];
+        state[key] = this.cloneDeep(newPresences);
         if (currentPresences.length > 0) {
-          const joinedPresenceRefs = state2[key].map((m) => m.presence_ref);
+          const joinedPresenceRefs = state[key].map((m) => m.presence_ref);
           const curPresences = currentPresences.filter((m) => joinedPresenceRefs.indexOf(m.presence_ref) < 0);
-          state2[key].unshift(...curPresences);
+          state[key].unshift(...curPresences);
         }
         onJoin(key, currentPresences, newPresences);
       });
       this.map(leaves, (key, leftPresences) => {
-        let currentPresences = state2[key];
+        let currentPresences = state[key];
         if (!currentPresences)
           return;
         const presenceRefsToRemove = leftPresences.map((m) => m.presence_ref);
         currentPresences = currentPresences.filter((m) => presenceRefsToRemove.indexOf(m.presence_ref) < 0);
-        state2[key] = currentPresences;
+        state[key] = currentPresences;
         onLeave(key, currentPresences, leftPresences);
         if (currentPresences.length === 0)
-          delete state2[key];
+          delete state[key];
       });
-      return state2;
+      return state;
     }
     /** @internal */
     static map(obj, func) {
@@ -3404,10 +3404,10 @@ Suggested solution: ${env.workaround}`;
      *
      * @internal
      */
-    static transformState(state2) {
-      state2 = this.cloneDeep(state2);
-      return Object.getOwnPropertyNames(state2).reduce((newState, key) => {
-        const presences = state2[key];
+    static transformState(state) {
+      state = this.cloneDeep(state);
+      return Object.getOwnPropertyNames(state).reduce((newState, key) => {
+        const presences = state[key];
         if ("metas" in presences) {
           newState[key] = presences.metas.map((presence) => {
             presence["presence_ref"] = presence["phx_ref"];
@@ -4660,11 +4660,11 @@ Option 2: Install and provide the "ws" package:
      * Set connection state with proper state management
      * @internal
      */
-    _setConnectionState(state2, manual = false) {
-      this._connectionState = state2;
-      if (state2 === "connecting") {
+    _setConnectionState(state, manual = false) {
+      this._connectionState = state;
+      if (state === "connecting") {
         this._wasManualDisconnect = false;
-      } else if (state2 === "disconnecting") {
+      } else if (state === "disconnecting") {
         this._wasManualDisconnect = manual;
       }
     }
@@ -7914,33 +7914,33 @@ Option 2: Install and provide the "ws" package:
     }
     return charMap;
   })();
-  function byteToBase64URL(byte, state2, emit) {
+  function byteToBase64URL(byte, state, emit) {
     if (byte !== null) {
-      state2.queue = state2.queue << 8 | byte;
-      state2.queuedBits += 8;
-      while (state2.queuedBits >= 6) {
-        const pos = state2.queue >> state2.queuedBits - 6 & 63;
+      state.queue = state.queue << 8 | byte;
+      state.queuedBits += 8;
+      while (state.queuedBits >= 6) {
+        const pos = state.queue >> state.queuedBits - 6 & 63;
         emit(TO_BASE64URL[pos]);
-        state2.queuedBits -= 6;
+        state.queuedBits -= 6;
       }
-    } else if (state2.queuedBits > 0) {
-      state2.queue = state2.queue << 6 - state2.queuedBits;
-      state2.queuedBits = 6;
-      while (state2.queuedBits >= 6) {
-        const pos = state2.queue >> state2.queuedBits - 6 & 63;
+    } else if (state.queuedBits > 0) {
+      state.queue = state.queue << 6 - state.queuedBits;
+      state.queuedBits = 6;
+      while (state.queuedBits >= 6) {
+        const pos = state.queue >> state.queuedBits - 6 & 63;
         emit(TO_BASE64URL[pos]);
-        state2.queuedBits -= 6;
+        state.queuedBits -= 6;
       }
     }
   }
-  function byteFromBase64URL(charCode, state2, emit) {
+  function byteFromBase64URL(charCode, state, emit) {
     const bits = FROM_BASE64URL[charCode];
     if (bits > -1) {
-      state2.queue = state2.queue << 6 | bits;
-      state2.queuedBits += 6;
-      while (state2.queuedBits >= 8) {
-        emit(state2.queue >> state2.queuedBits - 8 & 255);
-        state2.queuedBits -= 8;
+      state.queue = state.queue << 6 | bits;
+      state.queuedBits += 6;
+      while (state.queuedBits >= 8) {
+        emit(state.queue >> state.queuedBits - 8 & 255);
+        state.queuedBits -= 8;
       }
     } else if (bits === -2) {
       return;
@@ -8000,47 +8000,47 @@ Option 2: Install and provide the "ws" package:
       codepointToUTF8(codepoint, emit);
     }
   }
-  function stringFromUTF8(byte, state2, emit) {
-    if (state2.utf8seq === 0) {
+  function stringFromUTF8(byte, state, emit) {
+    if (state.utf8seq === 0) {
       if (byte <= 127) {
         emit(byte);
         return;
       }
       for (let leadingBit = 1; leadingBit < 6; leadingBit += 1) {
         if ((byte >> 7 - leadingBit & 1) === 0) {
-          state2.utf8seq = leadingBit;
+          state.utf8seq = leadingBit;
           break;
         }
       }
-      if (state2.utf8seq === 2) {
-        state2.codepoint = byte & 31;
-      } else if (state2.utf8seq === 3) {
-        state2.codepoint = byte & 15;
-      } else if (state2.utf8seq === 4) {
-        state2.codepoint = byte & 7;
+      if (state.utf8seq === 2) {
+        state.codepoint = byte & 31;
+      } else if (state.utf8seq === 3) {
+        state.codepoint = byte & 15;
+      } else if (state.utf8seq === 4) {
+        state.codepoint = byte & 7;
       } else {
         throw new Error("Invalid UTF-8 sequence");
       }
-      state2.utf8seq -= 1;
-    } else if (state2.utf8seq > 0) {
+      state.utf8seq -= 1;
+    } else if (state.utf8seq > 0) {
       if (byte <= 127) {
         throw new Error("Invalid UTF-8 sequence");
       }
-      state2.codepoint = state2.codepoint << 6 | byte & 63;
-      state2.utf8seq -= 1;
-      if (state2.utf8seq === 0) {
-        emit(state2.codepoint);
+      state.codepoint = state.codepoint << 6 | byte & 63;
+      state.utf8seq -= 1;
+      if (state.utf8seq === 0) {
+        emit(state.codepoint);
       }
     }
   }
   function base64UrlToUint8Array(str) {
     const result = [];
-    const state2 = { queue: 0, queuedBits: 0 };
+    const state = { queue: 0, queuedBits: 0 };
     const onByte = (byte) => {
       result.push(byte);
     };
     for (let i = 0; i < str.length; i += 1) {
-      byteFromBase64URL(str.charCodeAt(i), state2, onByte);
+      byteFromBase64URL(str.charCodeAt(i), state, onByte);
     }
     return new Uint8Array(result);
   }
@@ -8051,12 +8051,12 @@ Option 2: Install and provide the "ws" package:
   }
   function bytesToBase64URL(bytes) {
     const result = [];
-    const state2 = { queue: 0, queuedBits: 0 };
+    const state = { queue: 0, queuedBits: 0 };
     const onChar = (char) => {
       result.push(char);
     };
-    bytes.forEach((byte) => byteToBase64URL(byte, state2, onChar));
-    byteToBase64URL(null, state2, onChar);
+    bytes.forEach((byte) => byteToBase64URL(byte, state, onChar));
+    byteToBase64URL(null, state, onChar);
     return result.join("");
   }
 
@@ -13236,385 +13236,226 @@ ${suffix}`;
   }
 
   // src/wardrobe.js
-  var CATEGORY_LABELS = {
-    tops: "Tops",
-    bottoms: "Bottoms",
-    dresses: "Dresses",
-    shoes: "Shoes",
-    accessories: "Accessories",
-    outerwear: "Outerwear"
-  };
   var LAST_SAVE_KEY = "threadcount:last-save-result";
   var WARDROBE_SELECT_FIELDS = "id, user_id, name, category, image_path, labels, colors, seasons, is_inspiration, is_template, created_at, updated_at";
-  function formatCount(count) {
-    return `${count} item${count === 1 ? "" : "s"}`;
-  }
-  function getItemImageUrl(supabase2, imagePath) {
-    if (!imagePath) {
+  function safeUrl(value) {
+    try {
+      return new URL(value);
+    } catch {
       return null;
     }
-    const { data } = supabase2.storage.from("wardrobe").getPublicUrl(imagePath);
-    return data.publicUrl;
   }
-  async function fetchWardrobeItems(supabase2, userId) {
-    const { data, error } = await supabase2.from("wardrobe_items").select(WARDROBE_SELECT_FIELDS).eq("user_id", userId).order("created_at", { ascending: false });
-    if (error) {
-      throw error;
+  function stripExtension(filename) {
+    return filename.replace(/\.[a-z0-9]+$/i, "");
+  }
+  function humanize(value) {
+    return value.replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();
+  }
+  function titleCase(value) {
+    return value.replace(/\b\w/g, (character) => character.toUpperCase());
+  }
+  function getNameFromImageUrl(srcUrl) {
+    const parsed = safeUrl(srcUrl);
+    if (!parsed) {
+      return "";
     }
-    return data || [];
+    const lastSegment = parsed.pathname.split("/").filter(Boolean).pop();
+    if (!lastSegment) {
+      return "";
+    }
+    const decoded = decodeURIComponent(lastSegment);
+    return titleCase(humanize(stripExtension(decoded)));
+  }
+  function getExtensionFromMimeType(mimeType) {
+    const normalized = mimeType.toLowerCase();
+    if (normalized.includes("jpeg") || normalized.includes("jpg")) return "jpg";
+    if (normalized.includes("png")) return "png";
+    if (normalized.includes("webp")) return "webp";
+    if (normalized.includes("gif")) return "gif";
+    if (normalized.includes("avif")) return "avif";
+    if (normalized.includes("svg")) return "svg";
+    return "jpg";
+  }
+  function getSourceHost(pageUrl, srcUrl) {
+    const parsed = safeUrl(pageUrl) || safeUrl(srcUrl);
+    return parsed?.hostname?.replace(/^www\./, "") || "web";
+  }
+  function buildWardrobeItemName({ srcUrl, pageTitle }) {
+    const imageName = getNameFromImageUrl(srcUrl);
+    if (imageName) {
+      return imageName;
+    }
+    if (pageTitle?.trim()) {
+      return pageTitle.trim();
+    }
+    return "Saved image";
+  }
+  async function saveRemoteImageToWardrobe(supabase2, payload) {
+    const {
+      data: { session },
+      error: sessionError
+    } = await supabase2.auth.getSession();
+    if (sessionError) {
+      throw sessionError;
+    }
+    const user = session?.user;
+    if (!user) {
+      throw new Error(
+        "Sign in to ThreadCount before saving images to your wardrobe."
+      );
+    }
+    const imageResponse = await fetch(payload.srcUrl);
+    if (!imageResponse.ok) {
+      throw new Error(
+        `Unable to fetch the selected image (${imageResponse.status}).`
+      );
+    }
+    const blob = await imageResponse.blob();
+    if (!blob.type.startsWith("image/")) {
+      throw new Error("The selected file is not a supported image.");
+    }
+    const itemId = globalThis.crypto.randomUUID();
+    const extension = getExtensionFromMimeType(blob.type);
+    const imagePath = `${user.id}/${itemId}.${extension}`;
+    const itemName = buildWardrobeItemName(payload);
+    const sourceHost = getSourceHost(payload.pageUrl, payload.srcUrl);
+    const { error: uploadError } = await supabase2.storage.from("wardrobe").upload(imagePath, blob, {
+      contentType: blob.type,
+      upsert: false
+    });
+    if (uploadError) {
+      throw uploadError;
+    }
+    const { data, error: insertError } = await supabase2.from("wardrobe_items").insert({
+      id: itemId,
+      user_id: user.id,
+      name: itemName,
+      category: "accessories",
+      image_path: imagePath,
+      labels: ["saved-from-extension", sourceHost],
+      colors: [],
+      seasons: []
+    }).select(WARDROBE_SELECT_FIELDS).single();
+    if (insertError) {
+      await supabase2.storage.from("wardrobe").remove([imagePath]);
+      throw insertError;
+    }
+    return {
+      item: data,
+      user,
+      sourceHost
+    };
   }
 
-  // src/popup.js
+  // src/background.js
+  var MENU_ID = "threadcount-save-image";
   var supabase = createSupabaseBrowserClient();
   function log2(step, details) {
     if (details === void 0) {
-      console.log(`[ThreadCount popup] ${step}`);
+      console.log(`[ThreadCount background] ${step}`);
       return;
     }
-    console.log(`[ThreadCount popup] ${step}`, details);
+    console.log(`[ThreadCount background] ${step}`, details);
   }
-  var elements = {
-    authForm: document.getElementById("authForm"),
-    email: document.getElementById("email"),
-    password: document.getElementById("password"),
-    submitBtn: document.getElementById("submitBtn"),
-    resetBtn: document.getElementById("resetBtn"),
-    logoutBtn: document.getElementById("logoutBtn"),
-    refreshBtn: document.getElementById("refreshBtn"),
-    sessionCard: document.getElementById("sessionCard"),
-    sessionEmail: document.getElementById("sessionEmail"),
-    wardrobeCard: document.getElementById("wardrobeCard"),
-    wardrobeCount: document.getElementById("wardrobeCount"),
-    wardrobeEmpty: document.getElementById("wardrobeEmpty"),
-    wardrobeList: document.getElementById("wardrobeList"),
-    saveFeedback: document.getElementById("saveFeedback"),
-    status: document.getElementById("status")
-  };
-  var state = {
-    busy: false
-  };
-  var renderSessionScheduled = false;
-  function setStatus(message, tone = "neutral") {
-    log2("setStatus", { message, tone });
-    elements.status.textContent = message;
-    elements.status.className = `status${tone === "neutral" ? "" : ` ${tone}`}`;
+  function createNotification(title, message) {
+    if (!globalThis.chrome?.notifications?.create) {
+      return;
+    }
+    chrome.notifications.create({
+      type: "basic",
+      iconUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAQAAAAAYLlVAAAAw0lEQVR4Ae3XsQ2CQBBG4XcQQJAEJIQiSEIkhCJIQiSEIkgfHgPce8CN7szvJt7l7M7OXQghhBBCCCGEkL8S7w5Bh2nT1Wv9K3HrxJ9gB8zW3n2Jd3f5K+zS6wG0m8g+tr5L0vL7AVzZ8C5aP4n0eT0z9wLr9nYd8k+v8JbY2mGvVx8kV4dr6wK1TzM9f22Yf1t8W7k9V8JfP3A7XvLk7w5x4V6T+4Qf3z2Q7k6kP9Wv8t8l7C5H4D3TQhBBCCCGEEEIIIYQQ8h98AWM2pj3B7l2PAAAAAElFTkSuQmCC",
+      title,
+      message
+    });
   }
-  function setBusy(isBusy) {
-    log2("setBusy", { isBusy });
-    state.busy = isBusy;
-    for (const button of [
-      elements.submitBtn,
-      elements.resetBtn,
-      elements.logoutBtn,
-      elements.refreshBtn
-    ]) {
-      if (button) {
-        button.disabled = isBusy;
+  async function writeLastSaveResult(status, message) {
+    log2("writeLastSaveResult", { status, message });
+    await chrome.storage.local.set({
+      [LAST_SAVE_KEY]: {
+        status,
+        message,
+        timestamp: Date.now()
       }
-    }
+    });
   }
-  function renderSaveFeedback(entry) {
-    if (!entry) {
-      elements.saveFeedback.textContent = "Right-click any image in your browser and choose Save to Wardrobe.";
-      elements.saveFeedback.className = "feedback";
+  async function flashBadge(text, color) {
+    if (!chrome.action?.setBadgeText) {
       return;
     }
-    elements.saveFeedback.textContent = entry.message;
-    elements.saveFeedback.className = `feedback${entry.status ? ` ${entry.status}` : ""}`;
+    await chrome.action.setBadgeBackgroundColor({ color });
+    await chrome.action.setBadgeText({ text });
+    setTimeout(() => {
+      chrome.action.setBadgeText({ text: "" });
+    }, 5e3);
   }
-  function renderWardrobeItems(items) {
-    elements.wardrobeList.replaceChildren();
-    if (!items.length) {
-      elements.wardrobeCount.textContent = formatCount(0);
-      elements.wardrobeEmpty.textContent = "No wardrobe items yet. Add pieces on the website to see them here.";
-      elements.wardrobeEmpty.classList.remove("hidden");
-      return;
-    }
-    elements.wardrobeCount.textContent = formatCount(items.length);
-    elements.wardrobeEmpty.classList.add("hidden");
-    for (const item of items) {
-      const article = document.createElement("article");
-      article.className = "wardrobe-item";
-      const imageUrl = getItemImageUrl(supabase, item.image_path);
-      const thumb = document.createElement("div");
-      thumb.className = "wardrobe-thumb";
-      if (imageUrl) {
-        const image = document.createElement("img");
-        image.src = imageUrl;
-        image.alt = item.name;
-        image.loading = "lazy";
-        thumb.append(image);
-      } else {
-        const placeholder = document.createElement("span");
-        placeholder.className = "wardrobe-placeholder";
-        placeholder.textContent = "No image";
-        thumb.append(placeholder);
+  function ensureContextMenu() {
+    log2("ensureContextMenu:start");
+    chrome.contextMenus.removeAll(() => {
+      if (chrome.runtime.lastError) {
+        log2("ensureContextMenu:removeAll-error", chrome.runtime.lastError.message);
       }
-      const copy = document.createElement("div");
-      copy.className = "wardrobe-copy";
-      const name = document.createElement("p");
-      name.className = "wardrobe-name";
-      name.textContent = item.name;
-      const category = document.createElement("p");
-      category.className = "wardrobe-category";
-      category.textContent = CATEGORY_LABELS[item.category] || item.category;
-      copy.append(name, category);
-      const tags = [...item.colors || [], ...item.seasons || []].slice(0, 3);
-      if (tags.length) {
-        const tagRow = document.createElement("div");
-        tagRow.className = "wardrobe-tags";
-        for (const value of tags) {
-          const tag = document.createElement("span");
-          tag.className = "tag";
-          tag.textContent = value;
-          tagRow.append(tag);
+      chrome.contextMenus.create({
+        id: MENU_ID,
+        title: "Save to Wardrobe",
+        contexts: ["image", "page"]
+      }, () => {
+        if (chrome.runtime.lastError) {
+          log2("ensureContextMenu:create-error", chrome.runtime.lastError.message);
+          return;
         }
-        copy.append(tagRow);
-      }
-      article.append(thumb, copy);
-      elements.wardrobeList.append(article);
-    }
-  }
-  function resetWardrobe(message = "Sign in to load your wardrobe.") {
-    elements.wardrobeList.replaceChildren();
-    elements.wardrobeCount.textContent = formatCount(0);
-    elements.wardrobeEmpty.textContent = message;
-    elements.wardrobeEmpty.classList.remove("hidden");
-    elements.wardrobeCard.classList.add("hidden");
-  }
-  async function loadWardrobe(userId) {
-    log2("loadWardrobe:start", { userId });
-    if (!userId) {
-      throw new Error("No user id found for this session.");
-    }
-    elements.wardrobeCard.classList.remove("hidden");
-    elements.wardrobeEmpty.textContent = "Loading your wardrobe\u2026";
-    elements.wardrobeEmpty.classList.remove("hidden");
-    elements.wardrobeCount.textContent = "\u2026";
-    const items = await fetchWardrobeItems(supabase, userId);
-    log2("loadWardrobe:success", { count: items.length });
-    renderWardrobeItems(items);
-  }
-  async function loadSaveFeedback() {
-    log2("loadSaveFeedback:start");
-    const storage = globalThis.chrome?.storage?.local;
-    if (!storage) {
-      log2("loadSaveFeedback:no-storage");
-      renderSaveFeedback();
-      return;
-    }
-    const result = await storage.get([LAST_SAVE_KEY]);
-    log2("loadSaveFeedback:result", result[LAST_SAVE_KEY] || null);
-    renderSaveFeedback(result[LAST_SAVE_KEY]);
-  }
-  async function renderSession() {
-    log2("renderSession:start");
-    const {
-      data: { session },
-      error
-    } = await supabase.auth.getSession();
-    if (error) {
-      log2("renderSession:getSession-error", error);
-      setStatus(error.message, "error");
-      return;
-    }
-    const email = session?.user?.email;
-    const userId = session?.user?.id;
-    const isSignedIn = Boolean(email);
-    log2("renderSession:session", {
-      isSignedIn,
-      email: email || null,
-      userId: userId || null
-    });
-    elements.sessionCard.classList.toggle("hidden", !isSignedIn);
-    elements.authForm.closest(".card").classList.toggle("hidden", isSignedIn);
-    if (isSignedIn) {
-      elements.sessionEmail.textContent = email;
-      elements.sessionCard.classList.remove("hidden");
-      try {
-        await loadWardrobe(userId);
-        log2("renderSession:wardrobe-loaded");
-        setStatus("Session ready. Your wardrobe is loaded.", "success");
-      } catch (wardrobeError) {
-        log2("renderSession:wardrobe-error", wardrobeError);
-        elements.wardrobeCard.classList.remove("hidden");
-        elements.wardrobeList.replaceChildren();
-        elements.wardrobeCount.textContent = formatCount(0);
-        elements.wardrobeEmpty.textContent = "Signed in, but we could not load your wardrobe right now.";
-        elements.wardrobeEmpty.classList.remove("hidden");
-        setStatus("Signed in successfully.", "success");
-        renderSaveFeedback({
-          status: "error",
-          message: wardrobeError.message || "Unable to load wardrobe items right now."
-        });
-      }
-      return;
-    }
-    elements.sessionEmail.textContent = "";
-    resetWardrobe();
-    setStatus(
-      "No saved session. Sign in with your existing account to continue."
-    );
-  }
-  function scheduleRenderSession(reason) {
-    log2("scheduleRenderSession", {
-      reason,
-      alreadyScheduled: renderSessionScheduled
-    });
-    if (renderSessionScheduled) {
-      return;
-    }
-    renderSessionScheduled = true;
-    globalThis.setTimeout(async () => {
-      renderSessionScheduled = false;
-      try {
-        await renderSession();
-      } catch (error) {
-        log2("scheduleRenderSession:error", error);
-        setStatus(error.message || "Unable to refresh session.", "error");
-      }
-    }, 0);
-  }
-  async function signIn(email, password) {
-    log2("signIn:start", { email });
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      log2("signIn:error", error);
-      throw error;
-    }
-    log2("signIn:success", { email });
-    setStatus("Signed in successfully.", "success");
-  }
-  async function resetPassword(email) {
-    log2("resetPassword:start", { email });
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
-    if (error) {
-      log2("resetPassword:error", error);
-      throw error;
-    }
-    log2("resetPassword:success", { email });
-    setStatus("Password reset email sent. Check your inbox.", "success");
-  }
-  elements.authForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const email = elements.email.value.trim();
-    const password = elements.password.value;
-    if (!email || !password) {
-      setStatus("Email and password are required.", "error");
-      return;
-    }
-    try {
-      log2("authForm:submit", { email });
-      setBusy(true);
-      setStatus("Signing in\u2026");
-      const signInWatchdog = setTimeout(() => {
-        log2("signIn:watchdog-timeout", { email });
-      }, 8e3);
-      try {
-        await signIn(email, password);
-      } finally {
-        clearTimeout(signInWatchdog);
-      }
-      log2("authForm:signIn-finished", { email });
-      await renderSession();
-      log2("authForm:renderSession-finished", { email });
-    } catch (error) {
-      log2("authForm:error", error);
-      setStatus(error.message || "Authentication failed.", "error");
-    } finally {
-      setBusy(false);
-    }
-  });
-  elements.resetBtn.addEventListener("click", async () => {
-    const email = elements.email.value.trim();
-    if (!email) {
-      setStatus(
-        "Enter your email first so the reset link goes to the right inbox.",
-        "error"
-      );
-      return;
-    }
-    try {
-      setBusy(true);
-      setStatus("Sending password reset email\u2026");
-      await resetPassword(email);
-    } catch (error) {
-      setStatus(error.message || "Unable to send password reset email.", "error");
-    } finally {
-      setBusy(false);
-    }
-  });
-  elements.logoutBtn.addEventListener("click", async () => {
-    try {
-      log2("logout:start");
-      setBusy(true);
-      setStatus("Signing out\u2026");
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        log2("logout:error", error);
-        throw error;
-      }
-      log2("logout:success");
-      elements.password.value = "";
-      await renderSession();
-    } catch (error) {
-      log2("logout:catch", error);
-      setStatus(error.message || "Unable to sign out.", "error");
-    } finally {
-      setBusy(false);
-    }
-  });
-  elements.refreshBtn.addEventListener("click", async () => {
-    try {
-      log2("refresh:start");
-      setBusy(true);
-      setStatus("Refreshing session\u2026");
-      const { error } = await supabase.auth.refreshSession();
-      if (error) {
-        log2("refresh:error", error);
-        throw error;
-      }
-      log2("refresh:success");
-      await renderSession();
-    } catch (error) {
-      log2("refresh:catch", error);
-      setStatus(error.message || "Unable to refresh session.", "error");
-    } finally {
-      setBusy(false);
-    }
-  });
-  supabase.auth.onAuthStateChange((event) => {
-    log2("authStateChange", { event });
-    if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "TOKEN_REFRESHED") {
-      scheduleRenderSession(`auth:${event}`);
-    }
-  });
-  globalThis.chrome?.storage?.onChanged?.addListener(
-    async (changes, areaName) => {
-      log2("storage:onChanged", {
-        areaName,
-        hasLastSave: Boolean(changes[LAST_SAVE_KEY])
+        log2("ensureContextMenu:created");
       });
-      if (areaName !== "local" || !changes[LAST_SAVE_KEY]) {
-        return;
-      }
-      renderSaveFeedback(changes[LAST_SAVE_KEY].newValue);
-      if (changes[LAST_SAVE_KEY].newValue?.status === "success") {
-        scheduleRenderSession("storage:last-save-success");
-      }
-    }
-  );
-  globalThis.addEventListener("error", (event) => {
-    log2("window:error", {
-      message: event.message,
-      filename: event.filename,
-      lineno: event.lineno,
-      colno: event.colno
     });
+  }
+  async function handleSaveImage(info, tab) {
+    log2("handleSaveImage:start", {
+      hasSrcUrl: Boolean(info.srcUrl),
+      pageUrl: tab?.url || null,
+      pageTitle: tab?.title || null
+    });
+    if (!info.srcUrl) {
+      const message = "No direct image was detected. Right-click the actual image, or open the image in a new tab first.";
+      await writeLastSaveResult("error", message);
+      await flashBadge("!", "#c4391c");
+      createNotification("Save to Wardrobe failed", message);
+      return;
+    }
+    try {
+      const result = await saveRemoteImageToWardrobe(supabase, {
+        srcUrl: info.srcUrl,
+        pageUrl: tab?.url,
+        pageTitle: tab?.title
+      });
+      const message = `Saved ${result.item.name} to your wardrobe.`;
+      log2("handleSaveImage:success", { itemId: result.item.id, name: result.item.name });
+      await writeLastSaveResult("success", message);
+      await flashBadge("OK", "#2d7a3a");
+      createNotification("Saved to Wardrobe", message);
+    } catch (error) {
+      log2("handleSaveImage:error", error);
+      const message = error?.message || "Unable to save this image to your wardrobe.";
+      await writeLastSaveResult("error", message);
+      await flashBadge("!", "#c4391c");
+      createNotification("Save to Wardrobe failed", message);
+    }
+  }
+  chrome.runtime.onInstalled.addListener(() => {
+    log2("runtime:onInstalled");
+    ensureContextMenu();
   });
-  globalThis.addEventListener("unhandledrejection", (event) => {
-    log2("window:unhandledrejection", event.reason);
+  chrome.runtime.onStartup.addListener(() => {
+    log2("runtime:onStartup");
+    ensureContextMenu();
   });
-  loadSaveFeedback();
-  scheduleRenderSession("startup");
+  chrome.contextMenus.onClicked.addListener((info, tab) => {
+    log2("contextMenus:onClicked", {
+      menuItemId: info.menuItemId,
+      hasSrcUrl: Boolean(info.srcUrl)
+    });
+    if (info.menuItemId !== MENU_ID) {
+      return;
+    }
+    handleSaveImage(info, tab);
+  });
+  ensureContextMenu();
 })();

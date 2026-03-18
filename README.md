@@ -7,6 +7,7 @@ This folder now contains a plain JavaScript Chrome extension that signs users in
 - Email/password sign in
 - Password reset email trigger
 - Persistent auth session using extension storage
+- Right-click any browser image and save it to the user wardrobe
 
 ## Setup
 
@@ -30,3 +31,4 @@ If you change projects, update:
 - This version does not use TypeScript.
 - Sessions are persisted in `chrome.storage.local`.
 - The extension only allows sign-in for existing accounts.
+- The browser action adds a `Save to Wardrobe` image context-menu entry.

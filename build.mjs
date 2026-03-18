@@ -11,12 +11,15 @@ await rm(distDir, { recursive: true, force: true });
 await mkdir(distDir, { recursive: true });
 
 await esbuild.build({
-  entryPoints: [path.join(__dirname, "src", "popup.js")],
+  entryPoints: [
+    path.join(__dirname, "src", "popup.js"),
+    path.join(__dirname, "src", "background.js"),
+  ],
   bundle: true,
   format: "iife",
   platform: "browser",
   target: ["chrome114"],
-  outfile: path.join(distDir, "popup.js"),
+  outdir: distDir,
   sourcemap: false,
   logLevel: "info",
 });
@@ -29,6 +32,10 @@ await Promise.all([
   copyFile(
     path.join(__dirname, "manifest.json"),
     path.join(distDir, "manifest.json"),
+  ),
+  copyFile(
+    path.join(distDir, "background.js"),
+    path.join(__dirname, "background.js"),
   ),
 ]);
 
