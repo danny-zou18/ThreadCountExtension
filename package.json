@@ -1,17 +1,20 @@
 {
   "name": "threadcountextension",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "ThreadCount browser extension with Supabase auth",
+  "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc"
+    "build": "node build.mjs"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/danny-zou18/ThreadCountExtension.git"
   },
-  "keywords": [],
+  "keywords": [
+    "browser-extension",
+    "supabase",
+    "javascript"
+  ],
   "author": "",
   "license": "ISC",
   "bugs": {
@@ -19,9 +22,7 @@
   },
   "homepage": "https://github.com/danny-zou18/ThreadCountExtension#readme",
   "devDependencies": {
-    "@types/node": "^25.5.0",
-    "chrome-types": "^0.1.423",
-    "typescript": "^5.9.3"
+    "esbuild": "^0.25.10"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.99.2"

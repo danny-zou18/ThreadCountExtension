@@ -1,15 +1,502 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ThreadCount Auth</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f5f0eb;
+        --bg-elevated: #fdfbf9;
+        --text-primary: #0d0d0d;
+        --text-secondary: #6b6560;
+        --text-tertiary: #a39e98;
+        --border: #e8e3dd;
+        --border-strong: #0d0d0d;
+        --accent: #d94e1f;
+        --accent-hover: #c14319;
+        --error: #c4391c;
+        --success: #2d7a3a;
+        --shadow-levitate: 0 20px 40px -10px rgba(0, 0, 0, 0.08);
+        --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04);
+        --font-serif: "Instrument Serif", Georgia, serif;
+        --font-sans: Inter, system-ui, -apple-system, sans-serif;
+        --font-mono: "Space Mono", "Courier New", monospace;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      body {
+        width: 360px;
+        min-height: 520px;
+        margin: 0;
+        padding: 16px;
+        background: var(--bg);
+        color: var(--text-primary);
+        font-family: var(--font-sans);
+        font-size: 14px;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      body::after {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 9999;
+        opacity: 0.03;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+        background-repeat: repeat;
+        background-size: 256px 256px;
+      }
+
+      h1,
+      h2,
+      p {
+        margin: 0;
+      }
+
+      h1,
+      h2 {
+        font-family: var(--font-serif);
+        font-weight: 400;
+        letter-spacing: 0.01em;
+      }
+
+      h1 {
+        font-size: 34px;
+        line-height: 0.95;
+      }
+
+      h2 {
+        font-size: 28px;
+        line-height: 1;
+      }
+
+      .shell {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        min-height: 100%;
+        padding: 20px;
+        border: 1px solid var(--border);
+        background: var(--bg-elevated);
+        box-shadow: var(--shadow-levitate);
+      }
+
+      .brand {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 12px;
+        padding-bottom: 14px;
+        border-bottom: 1px solid var(--border-strong);
+      }
+
+      .brand-badge {
+        width: 48px;
+        height: 48px;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--border-strong);
+        background: transparent;
+        color: var(--text-primary);
+        font-family: var(--font-mono);
+        font-size: 12px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+      }
+
+      .eyebrow,
+      .session-note {
+        color: var(--text-tertiary);
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+      }
+
+      .muted,
+      .footer-note {
+        color: var(--text-secondary);
+      }
+
+      .card {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        padding: 20px;
+        border: 1px solid var(--border);
+        background: var(--bg-elevated);
+        box-shadow: var(--shadow-card);
+      }
+
+      .intro {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .divider {
+        width: 64px;
+        height: 1px;
+        background: var(--border-strong);
+      }
+
+      form {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+
+      label {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        color: var(--text-secondary);
+        font-size: 12px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      input {
+        width: 100%;
+        border: 1px solid var(--border);
+        padding: 13px 14px;
+        background: var(--bg-elevated);
+        color: var(--text-primary);
+        font: inherit;
+        outline: none;
+        transition:
+          border-color 120ms ease,
+          box-shadow 120ms ease;
+      }
+
+      input::placeholder {
+        color: var(--text-tertiary);
+      }
+
+      input:focus {
+        border-color: var(--border-strong);
+        box-shadow: 0 0 0 2px rgba(13, 13, 13, 0.05);
+      }
+
+      .actions {
+        display: flex;
+        gap: 10px;
+      }
+
+      .actions button {
+        flex: 1;
+      }
+
+      button {
+        border: 1px solid transparent;
+        padding: 12px 14px;
+        background: transparent;
+        color: var(--text-primary);
+        font: inherit;
+        font-weight: 500;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition:
+          transform 120ms ease,
+          opacity 120ms ease,
+          background 120ms ease,
+          color 120ms ease,
+          border-color 120ms ease;
+      }
+
+      button:hover {
+        transform: translateY(-1px);
+      }
+
+      button:disabled {
+        opacity: 0.4;
+        cursor: progress;
+        transform: none;
+      }
+
+      .primary {
+        background: var(--accent);
+        color: #fff;
+      }
+
+      .primary:hover {
+        background: var(--accent-hover);
+      }
+
+      .secondary,
+      .ghost {
+        border-color: var(--border-strong);
+      }
+
+      .secondary:hover,
+      .ghost:hover {
+        background: var(--text-primary);
+        color: var(--bg-elevated);
+      }
+
+      .danger {
+        color: var(--error);
+        border-color: rgba(196, 57, 28, 0.24);
+      }
+
+      .danger:hover {
+        background: var(--error);
+        color: #fff;
+      }
+
+      .status {
+        min-height: 44px;
+        padding: 14px;
+        border: 1px solid var(--border);
+        background: var(--bg-elevated);
+        color: var(--text-secondary);
+        font-size: 13px;
+        line-height: 1.5;
+        box-shadow: var(--shadow-card);
+      }
+
+      .status.success {
+        color: var(--success);
+        border-color: rgba(45, 122, 58, 0.25);
+      }
+
+      .status.error {
+        color: var(--error);
+        border-color: rgba(196, 57, 28, 0.24);
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      .session-email {
+        font-family: var(--font-mono);
+        font-size: 13px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .footer-note {
+        font-size: 12px;
+      }
+
+      .section-header {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .section-meta {
+        color: var(--text-tertiary);
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .wardrobe-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        max-height: 280px;
+        overflow-y: auto;
+        padding-right: 4px;
+      }
+
+      .wardrobe-list:empty {
+        display: none;
+      }
+
+      .wardrobe-item {
+        display: grid;
+        grid-template-columns: 64px minmax(0, 1fr);
+        gap: 12px;
+        align-items: center;
+        padding: 10px;
+        border: 1px solid var(--border);
+        background: var(--bg);
+      }
+
+      .wardrobe-thumb {
+        width: 64px;
+        height: 64px;
+        border: 1px solid var(--border);
+        background: var(--bg-elevated);
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .wardrobe-thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .wardrobe-placeholder {
+        color: var(--text-tertiary);
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .wardrobe-copy {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+
+      .wardrobe-name {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-primary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .wardrobe-category {
+        color: var(--text-secondary);
+        font-size: 12px;
+      }
+
+      .wardrobe-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 2px;
+      }
+
+      .tag {
+        padding: 2px 6px;
+        border: 1px solid var(--border);
+        color: var(--text-secondary);
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        background: var(--bg-elevated);
+      }
+
+      .empty-state {
+        padding: 18px 14px;
+        border: 1px dashed var(--border);
+        color: var(--text-secondary);
+        font-size: 13px;
+        text-align: center;
+      }
+    </style>
+  </head>
   <body>
-    <h2>Login</h2>
+    <main class="shell">
+      <section class="brand">
+        <div>
+          <p class="eyebrow">ThreadCount</p>
+          <h1>Extension Access</h1>
+        </div>
+        <div class="brand-badge">TC</div>
+      </section>
 
-    <input id="email" type="email" placeholder="Email" />
-    <input id="password" type="password" placeholder="Password" />
-    <button id="loginBtn">Log in</button>
-    <button id="logoutBtn">Log out</button>
+      <section class="card">
+        <div class="intro">
+          <h2>Sign in</h2>
+          <div class="divider"></div>
+          <p class="muted">
+            Use your existing Supabase email and password to open your
+            ThreadCount session.
+          </p>
+        </div>
 
-    <p id="status"></p>
+        <form id="authForm">
+          <label>
+            Email
+            <input
+              id="email"
+              type="email"
+              autocomplete="email"
+              placeholder="you@example.com"
+              required
+            />
+          </label>
 
-    <script src="dist/popup.js"></script>
+          <label>
+            Password
+            <input
+              id="password"
+              type="password"
+              autocomplete="current-password"
+              placeholder="Enter your password"
+              minlength="6"
+              required
+            />
+          </label>
+
+          <p class="footer-note">
+            Only existing accounts can sign in from this extension.
+          </p>
+
+          <div class="actions">
+            <button id="submitBtn" class="primary" type="submit">
+              Sign in
+            </button>
+            <button id="resetBtn" class="secondary" type="button">
+              Reset password
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section class="card hidden" id="sessionCard">
+        <div>
+          <p class="session-note">Signed in as</p>
+          <p class="session-email" id="sessionEmail"></p>
+        </div>
+
+        <div class="actions">
+          <button id="refreshBtn" class="ghost" type="button">
+            Refresh session
+          </button>
+          <button id="logoutBtn" class="danger" type="button">Sign out</button>
+        </div>
+      </section>
+
+      <section class="card hidden" id="wardrobeCard">
+        <div class="section-header">
+          <div>
+            <p class="session-note">Personal closet</p>
+            <h2>Wardrobe</h2>
+          </div>
+          <p class="section-meta" id="wardrobeCount">0 items</p>
+        </div>
+
+        <div id="wardrobeEmpty" class="empty-state">
+          Sign in to load your wardrobe.
+        </div>
+
+        <div id="wardrobeList" class="wardrobe-list"></div>
+      </section>
+
+      <p id="status" class="status" aria-live="polite">
+        Checking saved session…
+      </p>
+      <p class="footer-note">This extension supports sign-in only.</p>
+    </main>
+
+    <script src="./dist/popup.js"></script>
   </body>
 </html>

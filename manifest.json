@@ -1,12 +1,14 @@
 {
   "manifest_version": 3,
-  "name": "My First TS Extension",
-  "version": "1.0",
-  "description": "A basic Chrome extension using TypeScript.",
+  "name": "ThreadCount Auth",
+  "version": "2.0.0",
+  "description": "Sign in to ThreadCount with Supabase directly from the extension popup.",
   "action": {
     "default_popup": "popup.html"
   },
-  "permissions": [
-    "storage"
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://lfyujnnwpfotoelcxdzd.supabase.co/*",
+    "https://*.supabase.co/*"
   ]
 }
