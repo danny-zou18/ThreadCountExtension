@@ -5,5 +5,8 @@
   "description": "A basic Chrome extension using TypeScript.",
   "action": {
     "default_popup": "popup.html"
-  }
+  },
+  "permissions": [
+    "storage"
+  ]
 }

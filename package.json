@@ -19,7 +19,11 @@
   },
   "homepage": "https://github.com/danny-zou18/ThreadCountExtension#readme",
   "devDependencies": {
+    "@types/node": "^25.5.0",
     "chrome-types": "^0.1.423",
     "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.99.2"
   }
 }
