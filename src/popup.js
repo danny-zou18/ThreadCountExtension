@@ -529,7 +529,10 @@ elements.pendingSaveBtn.addEventListener("click", async () => {
     });
 
     const message = `Saved "${saveResult.item.name}" to your wardrobe.`;
-    log("pendingSave:success", { itemId: saveResult.item.id, name: saveResult.item.name });
+    log("pendingSave:success", {
+      itemId: saveResult.item.id,
+      name: saveResult.item.name,
+    });
 
     await clearPendingSave();
 

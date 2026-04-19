@@ -1,5 +1,9 @@
 import { createSupabaseBrowserClient } from "./supabase.js";
-import { LAST_SAVE_KEY, PENDING_SAVE_KEY, saveRemoteImageToWardrobe } from "./wardrobe.js";
+import {
+  LAST_SAVE_KEY,
+  PENDING_SAVE_KEY,
+  saveRemoteImageToWardrobe,
+} from "./wardrobe.js";
 
 const MENU_ID = "threadcount-save-image";
 const supabase = createSupabaseBrowserClient();
