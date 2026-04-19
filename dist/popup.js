@@ -13245,6 +13245,7 @@ ${suffix}`;
     outerwear: "Outerwear"
   };
   var LAST_SAVE_KEY = "threadcount:last-save-result";
+  var PENDING_SAVE_KEY = "threadcount:pending-save";
   var WARDROBE_SELECT_FIELDS = "id, user_id, name, category, image_path, labels, colors, seasons, is_inspiration, is_template, created_at, updated_at";
   function formatCount(count) {
     return `${count} item${count === 1 ? "" : "s"}`;
@@ -13262,6 +13263,115 @@ ${suffix}`;
       throw error;
     }
     return data || [];
+  }
+  function safeUrl(value) {
+    try {
+      return new URL(value);
+    } catch {
+      return null;
+    }
+  }
+  function stripExtension(filename) {
+    return filename.replace(/\.[a-z0-9]+$/i, "");
+  }
+  function humanize(value) {
+    return value.replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();
+  }
+  function titleCase(value) {
+    return value.replace(/\b\w/g, (character) => character.toUpperCase());
+  }
+  function getNameFromImageUrl(srcUrl) {
+    const parsed = safeUrl(srcUrl);
+    if (!parsed) {
+      return "";
+    }
+    const lastSegment = parsed.pathname.split("/").filter(Boolean).pop();
+    if (!lastSegment) {
+      return "";
+    }
+    const decoded = decodeURIComponent(lastSegment);
+    return titleCase(humanize(stripExtension(decoded)));
+  }
+  function getExtensionFromMimeType(mimeType) {
+    const normalized = mimeType.toLowerCase();
+    if (normalized.includes("jpeg") || normalized.includes("jpg")) return "jpg";
+    if (normalized.includes("png")) return "png";
+    if (normalized.includes("webp")) return "webp";
+    if (normalized.includes("gif")) return "gif";
+    if (normalized.includes("avif")) return "avif";
+    if (normalized.includes("svg")) return "svg";
+    return "jpg";
+  }
+  function getSourceHost(pageUrl, srcUrl) {
+    const parsed = safeUrl(pageUrl) || safeUrl(srcUrl);
+    return parsed?.hostname?.replace(/^www\./, "") || "web";
+  }
+  function buildWardrobeItemName({ srcUrl, pageTitle }) {
+    const imageName = getNameFromImageUrl(srcUrl);
+    if (imageName) {
+      return imageName;
+    }
+    if (pageTitle?.trim()) {
+      return pageTitle.trim();
+    }
+    return "Saved image";
+  }
+  async function saveRemoteImageToWardrobe(supabase2, payload) {
+    const {
+      data: { session },
+      error: sessionError
+    } = await supabase2.auth.getSession();
+    if (sessionError) {
+      throw sessionError;
+    }
+    const user = session?.user;
+    if (!user) {
+      throw new Error(
+        "Sign in to ThreadCount before saving images to your wardrobe."
+      );
+    }
+    const imageResponse = await fetch(payload.srcUrl);
+    if (!imageResponse.ok) {
+      throw new Error(
+        `Unable to fetch the selected image (${imageResponse.status}).`
+      );
+    }
+    const blob = await imageResponse.blob();
+    if (!blob.type.startsWith("image/")) {
+      throw new Error("The selected file is not a supported image.");
+    }
+    const itemId = globalThis.crypto.randomUUID();
+    const extension = getExtensionFromMimeType(blob.type);
+    const imagePath = `${user.id}/${itemId}.${extension}`;
+    const itemName = payload.nameOverride || buildWardrobeItemName(payload);
+    const itemCategory = payload.categoryOverride || "accessories";
+    const sourceHost = getSourceHost(payload.pageUrl, payload.srcUrl);
+    const { error: uploadError } = await supabase2.storage.from("wardrobe").upload(imagePath, blob, {
+      contentType: blob.type,
+      upsert: false
+    });
+    if (uploadError) {
+      throw uploadError;
+    }
+    const { data, error: insertError } = await supabase2.from("wardrobe_items").insert({
+      id: itemId,
+      user_id: user.id,
+      name: itemName,
+      category: itemCategory,
+      image_path: imagePath,
+      labels: ["saved-from-extension", sourceHost],
+      colors: [],
+      seasons: []
+    }).select(WARDROBE_SELECT_FIELDS).single();
+    if (insertError) {
+      await supabase2.storage.from("wardrobe").remove([imagePath]);
+      throw insertError;
+    }
+    return {
+      item: data,
+      user,
+      sourceHost
+    };
   }
 
   // src/popup.js
@@ -13288,7 +13398,13 @@ ${suffix}`;
     wardrobeEmpty: document.getElementById("wardrobeEmpty"),
     wardrobeList: document.getElementById("wardrobeList"),
     saveFeedback: document.getElementById("saveFeedback"),
-    status: document.getElementById("status")
+    status: document.getElementById("status"),
+    pendingSaveCard: document.getElementById("pendingSaveCard"),
+    pendingImage: document.getElementById("pendingImage"),
+    pendingName: document.getElementById("pendingName"),
+    pendingCategory: document.getElementById("pendingCategory"),
+    pendingSaveBtn: document.getElementById("pendingSaveBtn"),
+    pendingCancelBtn: document.getElementById("pendingCancelBtn")
   };
   var state = {
     busy: false
@@ -13615,6 +13731,78 @@ ${suffix}`;
   globalThis.addEventListener("unhandledrejection", (event) => {
     log2("window:unhandledrejection", event.reason);
   });
+  async function checkPendingSave() {
+    const storage = globalThis.chrome?.storage?.local;
+    if (!storage) return;
+    const result = await storage.get([PENDING_SAVE_KEY]);
+    const pending = result[PENDING_SAVE_KEY];
+    if (!pending || !pending.srcUrl) return;
+    if (Date.now() - pending.timestamp > 5 * 60 * 1e3) {
+      await storage.remove([PENDING_SAVE_KEY]);
+      return;
+    }
+    log2("checkPendingSave:found", pending);
+    const suggestedName = buildWardrobeItemName(pending);
+    elements.pendingName.value = suggestedName;
+    elements.pendingCategory.value = "accessories";
+    elements.pendingImage.src = pending.srcUrl;
+    elements.pendingSaveCard.classList.remove("hidden");
+    setStatus("Edit the item details, then click Save.", "success");
+  }
+  async function clearPendingSave() {
+    const storage = globalThis.chrome?.storage?.local;
+    if (storage) {
+      await storage.remove([PENDING_SAVE_KEY]);
+    }
+    elements.pendingSaveCard.classList.add("hidden");
+  }
+  elements.pendingCancelBtn.addEventListener("click", async () => {
+    log2("pendingSave:cancel");
+    await clearPendingSave();
+    setStatus("Save cancelled.", "neutral");
+  });
+  elements.pendingSaveBtn.addEventListener("click", async () => {
+    const storage = globalThis.chrome?.storage?.local;
+    if (!storage) return;
+    const result = await storage.get([PENDING_SAVE_KEY]);
+    const pending = result[PENDING_SAVE_KEY];
+    if (!pending || !pending.srcUrl) {
+      setStatus("No pending image found.", "error");
+      await clearPendingSave();
+      return;
+    }
+    const name = elements.pendingName.value.trim();
+    const category = elements.pendingCategory.value;
+    if (!name) {
+      setStatus("Please enter a name for this item.", "error");
+      return;
+    }
+    try {
+      setBusy(true);
+      setStatus("Saving to wardrobe\u2026");
+      const saveResult = await saveRemoteImageToWardrobe(supabase, {
+        srcUrl: pending.srcUrl,
+        pageUrl: pending.pageUrl,
+        pageTitle: pending.pageTitle,
+        nameOverride: name,
+        categoryOverride: category
+      });
+      const message = `Saved "${saveResult.item.name}" to your wardrobe.`;
+      log2("pendingSave:success", { itemId: saveResult.item.id, name: saveResult.item.name });
+      await clearPendingSave();
+      await storage.set({
+        [LAST_SAVE_KEY]: { status: "success", message, timestamp: Date.now() }
+      });
+      setStatus(message, "success");
+      scheduleRenderSession("pending-save-success");
+    } catch (error) {
+      log2("pendingSave:error", error);
+      setStatus(error?.message || "Unable to save this image.", "error");
+    } finally {
+      setBusy(false);
+    }
+  });
   loadSaveFeedback();
   scheduleRenderSession("startup");
+  checkPendingSave();
 })();

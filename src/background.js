@@ -1,5 +1,5 @@
 import { createSupabaseBrowserClient } from "./supabase.js";
-import { LAST_SAVE_KEY, saveRemoteImageToWardrobe } from "./wardrobe.js";
+import { LAST_SAVE_KEY, PENDING_SAVE_KEY, saveRemoteImageToWardrobe } from "./wardrobe.js";
 
 const MENU_ID = "threadcount-save-image";
 const supabase = createSupabaseBrowserClient();
@@ -98,29 +98,21 @@ async function handleSaveImage(info, tab) {
     return;
   }
 
-  try {
-    const result = await saveRemoteImageToWardrobe(supabase, {
+  // Store pending save data and open the popup for the user to edit name/category
+  await chrome.storage.local.set({
+    [PENDING_SAVE_KEY]: {
       srcUrl: info.srcUrl,
-      pageUrl: tab?.url,
-      pageTitle: tab?.title,
-    });
+      pageUrl: tab?.url || null,
+      pageTitle: tab?.title || null,
+      timestamp: Date.now(),
+    },
+  });
 
-    const message = `Saved ${result.item.name} to your wardrobe.`;
-    log("handleSaveImage:success", {
-      itemId: result.item.id,
-      name: result.item.name,
-    });
-    await writeLastSaveResult("success", message);
-    await flashBadge("OK", "#2d7a3a");
-    createNotification("Saved to Wardrobe", message);
-  } catch (error) {
-    log("handleSaveImage:error", error);
-    const message =
-      error?.message || "Unable to save this image to your wardrobe.";
-    await writeLastSaveResult("error", message);
-    await flashBadge("!", "#c4391c");
-    createNotification("Save to Wardrobe failed", message);
-  }
+  log("handleSaveImage:pending-stored");
+  await flashBadge("…", "#d94e1f");
+
+  // Open the popup so the user can edit before saving
+  chrome.action.openPopup();
 }
 
 chrome.runtime.onInstalled.addListener(() => {

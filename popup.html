@@ -413,6 +413,42 @@
         font-size: 13px;
         text-align: center;
       }
+
+      select {
+        width: 100%;
+        border: 1px solid var(--border);
+        padding: 13px 14px;
+        background: var(--bg-elevated);
+        color: var(--text-primary);
+        font: inherit;
+        outline: none;
+        cursor: pointer;
+        transition:
+          border-color 120ms ease,
+          box-shadow 120ms ease;
+      }
+
+      select:focus {
+        border-color: var(--border-strong);
+        box-shadow: 0 0 0 2px rgba(13, 13, 13, 0.05);
+      }
+
+      .pending-thumb-container {
+        width: 100%;
+        max-height: 160px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg);
+      }
+
+      .pending-thumb-container img {
+        max-width: 100%;
+        max-height: 160px;
+        object-fit: contain;
+      }
     </style>
   </head>
   <body>
@@ -505,6 +541,40 @@
         <p id="saveFeedback" class="feedback">
           Right-click any image in your browser and choose Save to Wardrobe.
         </p>
+      </section>
+
+      <section class="card hidden" id="pendingSaveCard">
+        <div class="intro">
+          <h2>Save to Wardrobe</h2>
+          <div class="divider"></div>
+          <p class="muted">Edit the name and category before saving.</p>
+        </div>
+
+        <div id="pendingThumb" class="pending-thumb-container">
+          <img id="pendingImage" alt="Preview" />
+        </div>
+
+        <label>
+          Name
+          <input id="pendingName" type="text" placeholder="Item name" required />
+        </label>
+
+        <label>
+          Category
+          <select id="pendingCategory">
+            <option value="tops">Tops</option>
+            <option value="bottoms">Bottoms</option>
+            <option value="dresses">Dresses</option>
+            <option value="shoes">Shoes</option>
+            <option value="accessories" selected>Accessories</option>
+            <option value="outerwear">Outerwear</option>
+          </select>
+        </label>
+
+        <div class="actions">
+          <button id="pendingSaveBtn" class="primary" type="button">Save</button>
+          <button id="pendingCancelBtn" class="secondary" type="button">Cancel</button>
+        </div>
       </section>
 
       <p id="status" class="status" aria-live="polite">

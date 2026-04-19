@@ -2,9 +2,12 @@ import { createSupabaseBrowserClient } from "./supabase.js";
 import {
   CATEGORY_LABELS,
   LAST_SAVE_KEY,
+  PENDING_SAVE_KEY,
+  buildWardrobeItemName,
   fetchWardrobeItems,
   formatCount,
   getItemImageUrl,
+  saveRemoteImageToWardrobe,
 } from "./wardrobe.js";
 
 const supabase = createSupabaseBrowserClient();
@@ -34,6 +37,12 @@ const elements = {
   wardrobeList: document.getElementById("wardrobeList"),
   saveFeedback: document.getElementById("saveFeedback"),
   status: document.getElementById("status"),
+  pendingSaveCard: document.getElementById("pendingSaveCard"),
+  pendingImage: document.getElementById("pendingImage"),
+  pendingName: document.getElementById("pendingName"),
+  pendingCategory: document.getElementById("pendingCategory"),
+  pendingSaveBtn: document.getElementById("pendingSaveBtn"),
+  pendingCancelBtn: document.getElementById("pendingCancelBtn"),
 };
 
 const state = {
@@ -443,5 +452,102 @@ globalThis.addEventListener("unhandledrejection", (event) => {
   log("window:unhandledrejection", event.reason);
 });
 
+// --- Pending save (edit before saving) ---
+
+async function checkPendingSave() {
+  const storage = globalThis.chrome?.storage?.local;
+  if (!storage) return;
+
+  const result = await storage.get([PENDING_SAVE_KEY]);
+  const pending = result[PENDING_SAVE_KEY];
+
+  if (!pending || !pending.srcUrl) return;
+
+  // Check it's not stale (older than 5 minutes)
+  if (Date.now() - pending.timestamp > 5 * 60 * 1000) {
+    await storage.remove([PENDING_SAVE_KEY]);
+    return;
+  }
+
+  log("checkPendingSave:found", pending);
+
+  // Pre-fill the form
+  const suggestedName = buildWardrobeItemName(pending);
+  elements.pendingName.value = suggestedName;
+  elements.pendingCategory.value = "accessories";
+  elements.pendingImage.src = pending.srcUrl;
+  elements.pendingSaveCard.classList.remove("hidden");
+
+  setStatus("Edit the item details, then click Save.", "success");
+}
+
+async function clearPendingSave() {
+  const storage = globalThis.chrome?.storage?.local;
+  if (storage) {
+    await storage.remove([PENDING_SAVE_KEY]);
+  }
+  elements.pendingSaveCard.classList.add("hidden");
+}
+
+elements.pendingCancelBtn.addEventListener("click", async () => {
+  log("pendingSave:cancel");
+  await clearPendingSave();
+  setStatus("Save cancelled.", "neutral");
+});
+
+elements.pendingSaveBtn.addEventListener("click", async () => {
+  const storage = globalThis.chrome?.storage?.local;
+  if (!storage) return;
+
+  const result = await storage.get([PENDING_SAVE_KEY]);
+  const pending = result[PENDING_SAVE_KEY];
+
+  if (!pending || !pending.srcUrl) {
+    setStatus("No pending image found.", "error");
+    await clearPendingSave();
+    return;
+  }
+
+  const name = elements.pendingName.value.trim();
+  const category = elements.pendingCategory.value;
+
+  if (!name) {
+    setStatus("Please enter a name for this item.", "error");
+    return;
+  }
+
+  try {
+    setBusy(true);
+    setStatus("Saving to wardrobe…");
+
+    const saveResult = await saveRemoteImageToWardrobe(supabase, {
+      srcUrl: pending.srcUrl,
+      pageUrl: pending.pageUrl,
+      pageTitle: pending.pageTitle,
+      nameOverride: name,
+      categoryOverride: category,
+    });
+
+    const message = `Saved "${saveResult.item.name}" to your wardrobe.`;
+    log("pendingSave:success", { itemId: saveResult.item.id, name: saveResult.item.name });
+
+    await clearPendingSave();
+
+    // Update last-save feedback
+    await storage.set({
+      [LAST_SAVE_KEY]: { status: "success", message, timestamp: Date.now() },
+    });
+
+    setStatus(message, "success");
+    scheduleRenderSession("pending-save-success");
+  } catch (error) {
+    log("pendingSave:error", error);
+    setStatus(error?.message || "Unable to save this image.", "error");
+  } finally {
+    setBusy(false);
+  }
+});
+
 loadSaveFeedback();
 scheduleRenderSession("startup");
+checkPendingSave();

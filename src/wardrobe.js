@@ -8,6 +8,7 @@ export const CATEGORY_LABELS = {
 };
 
 export const LAST_SAVE_KEY = "threadcount:last-save-result";
+export const PENDING_SAVE_KEY = "threadcount:pending-save";
 
 const WARDROBE_SELECT_FIELDS =
   "id, user_id, name, category, image_path, labels, colors, seasons, is_inspiration, is_template, created_at, updated_at";
@@ -142,7 +143,8 @@ export async function saveRemoteImageToWardrobe(supabase, payload) {
   const itemId = globalThis.crypto.randomUUID();
   const extension = getExtensionFromMimeType(blob.type);
   const imagePath = `${user.id}/${itemId}.${extension}`;
-  const itemName = buildWardrobeItemName(payload);
+  const itemName = payload.nameOverride || buildWardrobeItemName(payload);
+  const itemCategory = payload.categoryOverride || "accessories";
   const sourceHost = getSourceHost(payload.pageUrl, payload.srcUrl);
 
   const { error: uploadError } = await supabase.storage
@@ -162,7 +164,7 @@ export async function saveRemoteImageToWardrobe(supabase, payload) {
       id: itemId,
       user_id: user.id,
       name: itemName,
-      category: "accessories",
+      category: itemCategory,
       image_path: imagePath,
       labels: ["saved-from-extension", sourceHost],
       colors: [],
